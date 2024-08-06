@@ -44,12 +44,31 @@
         <button id="geolocate" onclick="geolocate()"><i class="fas fa-map-marker-alt"></i></button>
     </div>
     <div id="info"></div>
-
+    <script src="Voiries_3.js"></script>
+    <script src="ilo3_1.js"></script>
+    <script src="Batisilo3_2.js"></script>
     <script>
-        var map, vectorLayer, geoJsonLayer;
+         var map, vectorLayer, geoJsonLayer, voiriesLayer, iloLayer, batisiloLayer;
         var markers = [], waypoints = [];
         var isSettingStart = false, isSettingEnd = false, isSettingWaypoint = false;
+        
+        function setMapView() {
+            const geoJsonData = typeof json_Voiries_3 === 'string' ? JSON.parse(json_Voiries_3) : json_Voiries_3;
+        console.log("Voiries_3 data:", geoJsonData);
+            
+            const features = new ol.format.GeoJSON().readFeatures(geoJsonData, {
+                dataProjection: 'EPSG:4326',
+                featureProjection: 'EPSG:3857'
+            });
 
+            const extent = ol.extent.createEmpty();
+            features.forEach(feature => {
+                ol.extent.extend(extent, feature.getGeometry().getExtent());
+            });
+
+            map.getView().fit(extent, map.getSize());
+        }     
+        
         function initMap() {
             vectorLayer = new ol.layer.Vector({
                 source: new ol.source.Vector()
@@ -58,6 +77,38 @@
             geoJsonLayer = new ol.layer.Vector({
                 source: new ol.source.Vector(),
                 visible: true
+            });
+
+            voiriesLayer = new ol.layer.Vector({
+                source: new ol.source.Vector(),
+                style: new ol.style.Style({
+                    stroke: new ol.style.Stroke({
+                        color: 'rgba(0, 0, 255, 0.8)',
+                        width: 2
+                    })
+                })
+            });
+
+            iloLayer = new ol.layer.Vector({
+                source: new ol.source.Vector(),
+                style: new ol.style.Style({
+                    
+                    stroke: new ol.style.Stroke({
+                        color: 'green',
+                        width: 1
+                    })
+                })
+            });
+
+            batisiloLayer = new ol.layer.Vector({
+                source: new ol.source.Vector(),
+                style: new ol.style.Style({
+                   
+                    stroke: new ol.style.Stroke({
+                        color: 'red',
+                        width: 1
+                    })
+                })
             });
 
             map = new ol.Map({
@@ -69,9 +120,12 @@
                                            'Source: Esri, DigitalGlobe, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community'],
                             attributionsCollapsible: false,
                             url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-                            maxZoom: 23
+                            maxZoom: 28
                         })
                     }),
+                    voiriesLayer,
+                    iloLayer,
+                    batisiloLayer,
                     vectorLayer,
                     geoJsonLayer
                 ],
@@ -80,15 +134,46 @@
                     zoom: 2
                 })
             });
-
+           
             map.on('click', function(evt) {
                 if (isSettingStart || isSettingEnd || isSettingWaypoint) {
                     addMarker(evt.coordinate);
                 }
             });
 
-            toggleGeoJson();
+            loadGeoJsonData();
         }
+
+        function loadGeoJsonData() {
+            // Load Voiries_3 data
+            console.log("Loading Voiries_3 data");
+        const voiriesData = typeof json_Voiries_3 === 'string' ? JSON.parse(json_Voiries_3) : json_Voiries_3;
+        console.log("Voiries_3 data:", voiriesData);
+            const voiriesFeatures = new ol.format.GeoJSON().readFeatures(voiriesData, {
+                dataProjection: 'EPSG:4326',
+                featureProjection: 'EPSG:3857'
+            });
+            voiriesLayer.getSource().addFeatures(voiriesFeatures);
+
+            // Load ilo3_1 data
+            const iloData = JSON.stringify(json_ilo3_1);
+            const iloFeatures = new ol.format.GeoJSON().readFeatures(iloData, {
+                dataProjection: 'EPSG:4326',
+                featureProjection: 'EPSG:3857'
+            });
+            iloLayer.getSource().addFeatures(iloFeatures);
+
+            // Load Batisilo3_2 data
+            const batisiloData = JSON.stringify(json_Batisilo3_2);
+            const batisiloFeatures = new ol.format.GeoJSON().readFeatures(batisiloData, {
+                dataProjection: 'EPSG:4326',
+                featureProjection: 'EPSG:3857'
+            });
+            batisiloLayer.getSource().addFeatures(batisiloFeatures);
+
+            setMapView();
+        }
+
 
         function setStartPoint() {
             isSettingStart = true;
@@ -171,7 +256,7 @@
 
                     route.setStyle(new ol.style.Style({
                         stroke: new ol.style.Stroke({
-                            color: '#0000FF',
+                            color: '#f2d321',
                             width: 4
                         })
                     }));
@@ -246,7 +331,9 @@
 
         function toggleGeoJson() {
             var checkbox = document.getElementById('geoJsonToggle');
-            geoJsonLayer.setVisible(checkbox.checked);
+            voiriesLayer.setVisible(checkbox.checked);
+            iloLayer.setVisible(checkbox.checked);
+            batisiloLayer.setVisible(checkbox.checked);
         }
 
         function searchLocation() {
@@ -260,6 +347,7 @@
                         var lon = parseFloat(data[0].lon);
                         var lat = parseFloat(data[0].lat);
                         var position = ol.proj.fromLonLat([lon, lat]);
+                        
                         map.getView().animate({center: position, zoom: 12});
                     } else {
                         alert('Location not found');
@@ -285,7 +373,9 @@
             }
         }
 
-        window.onload = initMap;
+        window.onload = function(){
+            initMap();
+        }
     </script>
 </body>
 </html>
