@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Route Planner</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.9.0/css/ol.css" type="text/css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
+    <script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.9.0/build/ol.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        #map { height: 600px; margin-top: 20px; position: relative; }
+        #controls { margin-bottom: 20px; }
+        button { margin-right: 10px; padding: 8px 16px; cursor: pointer; }
+        #info { margin-top: 20px; }
+        #fileInput { display: none; }
+        #legend { position: absolute; top: 10px; right: 50px; background: white; padding: 10px; border-radius: 5px; z-index: 1000; }
+        #search { position: absolute; top: 50px; left: 10px; z-index: 1000; }
+        #search input { padding: 5px; width: 200px; }
+        #geolocate { position: absolute; top: 10px; left: 10px; z-index: 1000; background: white; border: none; border-radius: 5px; padding: 5px 10px; }
+        .ol-zoom { top: 90px; }
+    </style>
+</head>
+<body>
+    <h1>Advanced Route Planner</h1>
+    <div id="controls">
+        <button onclick="setStartPoint()" id="startButton"><i class="fas fa-play"></i> Set Start</button>
+        <button onclick="setEndPoint()" id="endButton"><i class="fas fa-flag-checkered"></i> Set End</button>
+        <button onclick="addWaypoint()" id="waypointButton"><i class="fas fa-plus"></i> Add Waypoint</button>
+        <button onclick="findRoute()" id="routeButton" disabled><i class="fas fa-route"></i> Find Route</button>
+        <button onclick="clearMap()" id="clearButton"><i class="fas fa-trash-alt"></i> Clear Map</button>
+        <button onclick="document.getElementById('fileInput').click()"><i class="fas fa-file-import"></i> Load GeoJSON</button>
+        <input type="file" id="fileInput" accept=".geojson" onchange="loadGeoJSON(this.files[0])">
+    </div>
+    <div id="map">
+        <div id="legend">
+            <input type="checkbox" id="geoJsonToggle" checked onchange="toggleGeoJson()">
+            <label for="geoJsonToggle">Show GeoJSON</label>
+        </div>
+        <div id="search">
+            <input type="text" id="searchInput" placeholder="Search location...">
+            <button onclick="searchLocation()">Search</button>
+        </div>
+        <button id="geolocate" onclick="geolocate()"><i class="fas fa-map-marker-alt"></i></button>
+    </div>
+    <div id="info"></div>
+
+    <script>
+        var map, vectorLayer, geoJsonLayer;
+        var markers = [], waypoints = [];
+        var isSettingStart = false, isSettingEnd = false, isSettingWaypoint = false;
+
+        function initMap() {
+            vectorLayer = new ol.layer.Vector({
+                source: new ol.source.Vector()
+            });
+
+            geoJsonLayer = new ol.layer.Vector({
+                source: new ol.source.Vector(),
+                visible: true
+            });
+
+            map = new ol.Map({
+                target: 'map',
+                layers: [
+                    new ol.layer.Tile({
+                        source: new ol.source.XYZ({
+                            attributions: ['Powered by Esri',
+                                           'Source: Esri, DigitalGlobe, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community'],
+                            attributionsCollapsible: false,
+                            url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                            maxZoom: 23
+                        })
+                    }),
+                    vectorLayer,
+                    geoJsonLayer
+                ],
+                view: new ol.View({
+                    center: ol.proj.fromLonLat([0, 0]),
+                    zoom: 2
+                })
+            });
+
+            map.on('click', function(evt) {
+                if (isSettingStart || isSettingEnd || isSettingWaypoint) {
+                    addMarker(evt.coordinate);
+                }
+            });
+
+            toggleGeoJson();
+        }
+
+        function setStartPoint() {
+            isSettingStart = true;
+            isSettingEnd = isSettingWaypoint = false;
+            updateInfo('Click on the map to set the start point.');
+        }
+
+        function setEndPoint() {
+            isSettingEnd = true;
+            isSettingStart = isSettingWaypoint = false;
+            updateInfo('Click on the map to set the end point.');
+        }
+
+        function addWaypoint() {
+            isSettingWaypoint = true;
+            isSettingStart = isSettingEnd = false;
+            updateInfo('Click on the map to add a waypoint.');
+        }
+
+        function addMarker(coordinate) {
+            var color = isSettingStart ? '#00FF00' : (isSettingEnd ? '#FF0000' : '#0000FF');
+            var feature = new ol.Feature({
+                geometry: new ol.geom.Point(coordinate)
+            });
+
+            feature.setStyle(new ol.style.Style({
+                image: new ol.style.Circle({
+                    radius: 7,
+                    fill: new ol.style.Fill({color: color}),
+                    stroke: new ol.style.Stroke({color: '#000000', width: 2})
+                })
+            }));
+
+            if (isSettingStart) {
+                markers = markers.filter(m => m.getStyle().getImage().getFill().getColor() !== '#00FF00');
+                if (markers.length > 0) vectorLayer.getSource().removeFeature(markers.shift());
+            } else if (isSettingEnd) {
+                markers = markers.filter(m => m.getStyle().getImage().getFill().getColor() !== '#FF0000');
+                if (markers.length > 0) vectorLayer.getSource().removeFeature(markers.pop());
+            }
+
+            markers.push(feature);
+            vectorLayer.getSource().addFeature(feature);
+
+            if (isSettingWaypoint) {
+                waypoints.push(ol.proj.transform(coordinate, 'EPSG:3857', 'EPSG:4326'));
+            }
+
+            isSettingStart = isSettingEnd = isSettingWaypoint = false;
+            updateInfo('Point added successfully. You can add more points or find a route.');
+
+            if (markers.length >= 2) {
+                document.getElementById('routeButton').disabled = false;
+            }
+        }
+
+        function findRoute() {
+            if (markers.length < 2) {
+                alert('Please set at least start and end points');
+                return;
+            }
+
+            var start = ol.proj.transform(markers[0].getGeometry().getCoordinates(), 'EPSG:3857', 'EPSG:4326');
+            var end = ol.proj.transform(markers[markers.length - 1].getGeometry().getCoordinates(), 'EPSG:3857', 'EPSG:4326');
+
+            var waypointsString = waypoints.map(wp => wp.join(',')).join(';');
+            var url = `https://router.project-osrm.org/route/v1/driving/${start.join(',')};${waypointsString};${end.join(',')}?overview=full&geometries=geojson`;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code !== 'Ok') {
+                        throw new Error('Unable to find a route');
+                    }
+
+                    var route = new ol.format.GeoJSON().readFeature(data.routes[0].geometry, {
+                        dataProjection: 'EPSG:4326',
+                        featureProjection: 'EPSG:3857'
+                    });
+
+                    route.setStyle(new ol.style.Style({
+                        stroke: new ol.style.Stroke({
+                            color: '#0000FF',
+                            width: 4
+                        })
+                    }));
+
+                    vectorLayer.getSource().addFeature(route);
+
+                    var extent = vectorLayer.getSource().getExtent();
+                    map.getView().fit(extent, { padding: [50, 50, 50, 50] });
+
+                    var distance = data.routes[0].distance / 1000; // km
+                    var duration = data.routes[0].duration / 60; // minutes
+
+                    updateInfo(`Route found! Distance: ${distance.toFixed(2)} km, Duration: ${duration.toFixed(2)} minutes`);
+                })
+                .catch(error => {
+                    alert('Error finding route: ' + error.message);
+                });
+        }
+
+        function clearMap() {
+            vectorLayer.getSource().clear();
+            geoJsonLayer.getSource().clear();
+            markers = [];
+            waypoints = [];
+            document.getElementById('routeButton').disabled = true;
+            updateInfo('Map cleared. You can set new points now.');
+        }
+
+        function updateInfo(message) {
+            document.getElementById('info').textContent = message;
+        }
+
+        function loadGeoJSON(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const geoJsonData = JSON.parse(e.target.result);
+                const features = new ol.format.GeoJSON().readFeatures(geoJsonData, {
+                    dataProjection: 'EPSG:4326',
+                    featureProjection: 'EPSG:3857'
+                });
+
+                geoJsonLayer.getSource().clear();
+                geoJsonLayer.getSource().addFeatures(features);
+
+                geoJsonLayer.setStyle(function(feature) {
+                    return new ol.style.Style({
+                        fill: new ol.style.Fill({
+                            color: 'rgba(255, 255, 0, 0.2)'
+                        }),
+                        stroke: new ol.style.Stroke({
+                            color: '#ffcc33',
+                            width: 1
+                        }),
+                        image: new ol.style.Circle({
+                            radius: 5,
+                            fill: new ol.style.Fill({
+                                color: '#ffcc33'
+                            })
+                        })
+                    });
+                });
+
+                const extent = geoJsonLayer.getSource().getExtent();
+                map.getView().fit(extent, { padding: [50, 50, 50, 50] });
+
+                updateInfo('GeoJSON data loaded and displayed on the map.');
+                
+                toggleGeoJson();
+            };
+            reader.readAsText(file);
+        }
+
+        function toggleGeoJson() {
+            var checkbox = document.getElementById('geoJsonToggle');
+            geoJsonLayer.setVisible(checkbox.checked);
+        }
+
+        function searchLocation() {
+            var query = document.getElementById('searchInput').value;
+            var url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        var lon = parseFloat(data[0].lon);
+                        var lat = parseFloat(data[0].lat);
+                        var position = ol.proj.fromLonLat([lon, lat]);
+                        map.getView().animate({center: position, zoom: 12});
+                    } else {
+                        alert('Location not found');
+                    }
+                })
+                .catch(error => {
+                    alert('Error searching location: ' + error.message);
+                });
+        }
+
+        function geolocate() {
+            if ('geolocation' in navigator) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    var lon = position.coords.longitude;
+                    var lat = position.coords.latitude;
+                    var pos = ol.proj.fromLonLat([lon, lat]);
+                    map.getView().animate({center: pos, zoom: 14});
+                }, function(error) {
+                    alert('Geolocation error: ' + error.message);
+                });
+            } else {
+                alert('Geolocation is not supported by your browser');
+            }
+        }
+
+        window.onload = initMap;
+    </script>
+</body>
+</html>
