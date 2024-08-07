@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Leaflet Web Mapping App</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-geosearch/3.3.2/geosearch.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-geosearch/3.3.2/geosearch.umd.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-routing-machine/3.2.12/leaflet-routing-machine.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        .layer-control {
+            position: absolute;
+            bottom: 20px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+        }
+        .layer-control .logo {
+            width: 40px;
+            height: 40px;
+            background: #3388ff;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .layer-control .layer-buttons {
+            display: none;
+            padding: 10px;
+        }
+        .layer-control.expanded .layer-buttons {
+            display: block;
+        }
+        .layer-control button {
+            display: block;
+            margin: 5px 0;
+            width: 100%;
+        }
+        .leaflet-control-geosearch { width: 100%; }
+        .leaflet-control-geosearch form { background: white; }
+        .mode-buttons {
+            position: absolute;
+            top: 10px;
+            left: 50px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="layer-control">
+        <div class="logo" onclick="toggleLayerControl()">Map</div>
+        <div class="layer-buttons">
+            <button onclick="setLayer('osm')">OpenStreetMap</button>
+            <button onclick="setLayer('satellite')">Google Satellite</button>
+            <button onclick="setLayer('hybrid')">Google Hybrid</button>
+        </div>
+    </div>
+    <div class="mode-buttons">
+        <button onclick="setRoutingMode('car')">Car</button>
+        <button onclick="setRoutingMode('bike')">Motorcycle</button>
+        <button onclick="setRoutingMode('foot')">Walk</button>
+    </div>
+
+    <script>
+        var map = L.map('map').setView([0, 0], 2);
+        var currentLayer;
+        var routingMode = 'car';
+
+        var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        });
+
+        var satelliteLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            attribution: '© Google'
+        });
+
+        var hybridLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            attribution: '© Google'
+        });
+
+        function setLayer(layerName) {
+            if (currentLayer) {
+                map.removeLayer(currentLayer);
+            }
+            switch (layerName) {
+                case 'osm':
+                    currentLayer = osmLayer;
+                    break;
+                case 'satellite':
+                    currentLayer = satelliteLayer;
+                    break;
+                case 'hybrid':
+                    currentLayer = hybridLayer;
+                    break;
+            }
+            currentLayer.addTo(map);
+        }
+
+        setLayer('osm');
+
+        function toggleLayerControl() {
+            var control = document.querySelector('.layer-control');
+            control.classList.toggle('expanded');
+        }
+
+        // Add GeoSearch control
+        const search = new GeoSearch.GeoSearchControl({
+            provider: new GeoSearch.OpenStreetMapProvider(),
+            style: 'bar',
+            showMarker: true,
+            showPopup: false,
+            autoClose: true,
+        });
+        map.addControl(search);
+
+        var routingControl;
+        var markers = [];
+
+        function setRoutingMode(mode) {
+            routingMode = mode;
+            if (markers.length === 2) {
+                updateRoute();
+            }
+        }
+
+        function updateRoute() {
+            if (routingControl) {
+                map.removeControl(routingControl);
+            }
+            routingControl = L.Routing.control({
+                waypoints: [
+                    markers[0].getLatLng(),
+                    markers[1].getLatLng()
+                ],
+                router: L.Routing.osrmv1({
+                    serviceUrl: 'https://router.project-osrm.org/route/v1',
+                    profile: routingMode
+                }),
+                routeWhileDragging: true,
+                lineOptions: {
+                    styles: [{color: '#3388ff', opacity: 0.6, weight: 4}]
+                },
+                createMarker: function() { return null; },
+                addWaypoints: false,
+                fitSelectedRoutes: true,
+                showAlternatives: false
+            }).addTo(map);
+
+            routingControl.on('routesfound', function(e) {
+                var routes = e.routes;
+                var summary = routes[0].summary;
+                var distance = (summary.totalDistance / 1000).toFixed(2);
+                var time = Math.round(summary.totalTime / 60);
+                alert(`Distance: ${distance} km\nEstimated time: ${time} minutes\nMode: ${routingMode}`);
+            });
+        }
+
+        map.on('click', function(e) {
+            if (markers.length < 2) {
+                var marker = L.marker(e.latlng).addTo(map);
+                markers.push(marker);
+
+                if (markers.length === 2) {
+                    updateRoute();
+                }
+            } else {
+                // Reset markers and routing
+                markers.forEach(marker => map.removeLayer(marker));
+                markers = [];
+                if (routingControl) {
+                    map.removeControl(routingControl);
+                    routingControl = null;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
