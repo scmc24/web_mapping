@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- ... (previous head content remains the same) ... -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Enhanced Leaflet Web Mapping App</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-geosearch/3.3.2/geosearch.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+    <link rel="stylesheet" href="index.css"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-geosearch/3.3.2/geosearch.umd.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-routing-machine/3.2.12/leaflet-routing-machine.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/osrm-text-instructions/0.13.4/osrm-text-instructions.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-routing-machine/dist/localization.fr.js"></script>
+
+   
+  </head>
+  <body>
+    <div id="map">
+      <!-- ... (previous map content remains the same) ... -->
+      <div class="search-container map-buttons">
+        <div class="search-toggle" onclick="toggleSearch()">🔍</div>
+        <div class="search-bar">
+          <input type="text" class="search-input" placeholder="Search..." />
+        </div>
+      </div>
+      <div class="layer-control">
+        <div class="layer-toggle map-buttons" onclick="toggleLayers()">Map</div>
+        <div class="layer-buttons map-buttons">
+          <button onclick="setLayer('osm')">OpenStreetMap</button>
+          <button onclick="setLayer('satellite')">Google Satellite</button>
+          <button onclick="setLayer('hybrid')">Google Hybrid</button>
+        </div>
+      </div>
+      <div class="map-buttons">
+        <button id="geolocate" class="" onclick="getGeolocation()">
+          <i class="fas fa-map-marker-alt icon-size"></i>
+        </button>
+
+        <button id="start-tracking">Start Tracking</button>
+      </div>
+      <div id="destination-search" class="map-buttons">
+        <input
+          type="text"
+          id="destination-input"
+          placeholder="Enter your destination"
+        />
+        <button id="search-destination">Search</button>
+      </div>
+    </div>
+
+    <!-- ... (previous body content remains the same) ... -->
+    <div id="control-panel">
+      <div class="mode-buttons">
+        <button onclick="setRoutingMode('car')">Car</button>
+        <button onclick="setRoutingMode('bike')">Motorcycle</button>
+        <button onclick="setRoutingMode('foot')">Walk</button>
+      </div>
+      <div>Selected mode: <span id="selected-mode">Car</span></div>
+      <div id="markers-count"></div>
+    </div>
+
+    <div id="search-results"></div>
+    <script src="Voiries_3.js"></script>
+    <script src="ilo3_1.js"></script>
+    <script src="Batisilo3_2.js"></script>
+
+    <script src="index.js"></script>
+  </body>
+</html>

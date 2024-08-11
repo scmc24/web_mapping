@@ -21,7 +21,7 @@
             flex-direction: column;
             height: 100vh;
         }
-        #geolocate { position: absolute; top: 150px; left: 10px; z-index: 1000; background: white; border: none; border-radius: 5px; padding: 5px 10px; }
+        #geolocate { position: absolute; top: 180px; left: 10px; z-index: 1000; background: white; border: none; border-radius: 5px; padding: 5px 10px; }
         #map { 
             flex: 1;
             width: 100%;
@@ -53,7 +53,7 @@
             top: 80px;
             left: 10px;
             z-index: 1000;
-            background-color: white;
+            background-color: transparent;
             border-radius: 4px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
@@ -102,7 +102,7 @@
         }
         .layer-buttons {
             display: none;
-            background: white;
+            background: transparent;
             border-radius: 4px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             padding: 10px;
@@ -135,20 +135,20 @@
             line-height: 1.4;
         }
         .leaflet-popup-tip {
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.842);
         }
         .leaflet-routing-container {
     max-height: 300px; /* Adjust this value as needed */
     overflow-y: auto;
     overflow-x: hidden;
-    border: 1px solid #ccc;
+    border: 1px solid #cccccc;
     border-radius: 4px;
-    margin-top: 80px !important;
+    margin-top: 187px !important;
     background-color: transparent !important;
     padding: 10px;
     box-shadow: 0 1px 5px rgba(0,0,0,0.65);
-    opacity: 80%;
-    color: wheat;
+    opacity: 90%;
+    color: rgb(245, 193, 95);
 }
 
 .leaflet-routing-container::-webkit-scrollbar {
@@ -186,6 +186,7 @@
             padding: 10px;
             cursor: pointer;
             border-bottom: 1px solid #eee;
+            background-color: transparent;
         }
         #search-results div:last-child {
             border-bottom: none;
@@ -194,9 +195,11 @@
             background-color: #f0f0f0;
         }
 
-        .geolocation-btn{
-            margin-top: 80px;
-            background-color: #0056b3;
+       
+
+        .icon-size{
+            font-size: 30px;;
+            color: darkcyan;
         }
     </style>
 </head>
@@ -220,7 +223,7 @@
 
         </div>
         <div class="map-buttons">
-            <button id="geolocate" class="" onclick="getGeolocation()"><i class="fas fa-map-marker-alt "></i></button>
+            <button id="geolocate" class="" onclick="getGeolocation()"><i class="fas fa-map-marker-alt icon-size" ></i></button>
 </div>
 
         
@@ -240,15 +243,20 @@
     <script src="ilo3_1.js"></script>
     <script src="Batisilo3_2.js"></script>
     <script>
+       
+
+        var currentLayer;
+        var routingMode = 'car';
+        var routingControl;
+        var markers = []; // list of markers
+        let routeCounter = 1;
+        
         var map = L.map('map', {
             zoomControl: false  // Disable default zoom control
         });
         L.control.zoom({
             position: 'topleft'  // Add zoom control to top left
         }).addTo(map);
-
-        var currentLayer;
-        var routingMode = 'car';
 
         var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
@@ -262,16 +270,18 @@
             attribution: '© Google'
         });
 
-        // Prevent click propagation for all map buttons
-document.querySelectorAll('.map-buttons').forEach(button => {
-    button.addEventListener('click', function(e) {
-        e.stopPropagation();
-    });
-
-    [...button.children].forEach(button => {button.addEventListener('click', function(e) {
-        e.stopPropagation();
-    });})
-});
+        const ilo3Layer = L.geoJSON(json_ilo3_1, {
+            style: {
+                fillColor: 'None',
+                weight: 2,
+                opacity: 1,
+                color: 'white',
+                fillOpacity: 0.6
+            }
+        }).addTo(map);
+        map.fitBounds(ilo3Layer.getBounds());
+        const searchInput = document.querySelector('.search-input');
+        const searchResults = document.getElementById('search-results');
 
         function setLayer(layerName) {
             if (currentLayer) {
@@ -291,8 +301,6 @@ document.querySelectorAll('.map-buttons').forEach(button => {
             currentLayer.addTo(map);
         }
 
-        setLayer('osm');
-
         function toggleSearch() {
             document.querySelector('.search-bar').classList.toggle('active');
         }
@@ -301,20 +309,46 @@ document.querySelectorAll('.map-buttons').forEach(button => {
             document.querySelector('.layer-buttons').classList.toggle('active');
         }
 
-        var routingControl;
-        var markers = [];
+        // Add marker to map 
+        function addMarker(marker){
 
-        function setRoutingMode(mode) {
-            routingMode = mode;
-            document.getElementById('selected-mode').textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
-            if (markers.length === 2) {
-                console.log(` length = ${markers.length}`);
-                updateRoute();
+            // make sure to clear the roads on the map
+            if (routingControl) {
+                map.removeControl(routingControl);
+            }
+
+            if (markers.length < 2){
+                markers.push(marker);
+                marker.addTo(map);
+            }
+            else{
+                // remove all the markers on the map
+                markers.forEach(marker => map.removeLayer(marker));
+
+                // clear the markers array
+                markers = [];
+
+                // add the new marker
+                markers.push(marker);
+                marker.addTo(map);
             }
         }
-
-        function updateRoute() {
-            if (routingControl) {
+       
+        // choose routing mode by car , motorcycle or walk
+        function setRoutingMode(mode,markers) {
+            routingMode = mode;
+            document.getElementById('selected-mode').textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+           
+                updateRoute(markers);
+            
+        }
+        
+        // Update the routing path
+        function updateRoute(markers) {
+          
+            // draw the route only if we have 2 markers
+            if(markers.length == 2) {
+                if (routingControl) {
                 map.removeControl(routingControl);
             }
             routingControl = L.Routing.control({
@@ -328,7 +362,8 @@ document.querySelectorAll('.map-buttons').forEach(button => {
                 }),
                 routeWhileDragging: true,
                 lineOptions: {
-                    styles: [{color: 'red', opacity: 0.6, weight: 4}]
+                    styles: [{color: 'red', opacity: 0.6, weight: 4},
+                    ]
                 },
                 createMarker: function() { return null; },
                 addWaypoints: false,
@@ -336,28 +371,9 @@ document.querySelectorAll('.map-buttons').forEach(button => {
                 showAlternatives: false
             }).addTo(map);
         }
-
-        map.on('click', function(e) {
-          
-            document.getElementById("markers-count").innerHTML = markers.length+1;
-            console.log(e.target);
-            if (markers.length < 2) {
-                var marker = L.marker(e.latlng).addTo(map);
-                markers.push(marker);
-
-                if (markers.length === 2) {
-                    updateRoute();
-                }
-            } else {
-                markers.forEach(marker => map.removeLayer(marker));
-                markers = [];
-                if (routingControl) {
-                    map.removeControl(routingControl);
-                    routingControl = null;
-                }
-            }
-        });
-
+        }
+      
+        // add geojson layer to the map
         function addGeoJSONLayer(data, style, onEachFeature) {
             L.geoJSON(data, {
                 style: style,
@@ -365,72 +381,30 @@ document.querySelectorAll('.map-buttons').forEach(button => {
             }).addTo(map);
         }
 
-        addGeoJSONLayer(json_Batisilo3_2, {
-            fillColor: '#ff7800',
-            weight: 1,
-            opacity: 1,
-            color: 'white',
-            fillOpacity: 0.7
-        }, function(feature, layer) {
-            layer.on('click', function(e) {
-                //alert("click "+e.latlng);
-                console.log(feature);
-                L.popup()
-                    .setLatLng(e.latlng)
-                    .setContent(`<h3>Building Information</h3>
-                                 <p>Type: ${feature.type || 'N/A'}</p>
-                                 <p>Name: Batiment ${feature.properties.fid || 'N/A'}</p>
-                                `)
-                    .openOn(map);
-            });
-        });
 
-        let routeCounter = 1;
-        addGeoJSONLayer(json_Voiries_3, {
-            color: 'yellow',
-            weight: 3,
-            opacity: 0.7
-        }, function(feature, layer) {
-            layer.bindTooltip(`Route de Fokoue ${routeCounter}`, {permanent: true, direction: 'center'});
-            routeCounter++;
-        });
-
-        const ilo3Layer = L.geoJSON(json_ilo3_1, {
-            style: {
-                fillColor: 'None',
-                weight: 2,
-                opacity: 1,
-                color: 'white',
-                fillOpacity: 0.6
-            }
-        }).addTo(map);
-        map.fitBounds(ilo3Layer.getBounds());
-        const searchInput = document.querySelector('.search-input');
-        const searchResults = document.getElementById('search-results');
-
+        // display search results
         function displaySearchResults(results) {
+
             searchResults.innerHTML = '';
             console.log(results);
+
             if (results.length > 0) {
                 results.forEach(result => {
                     const div = document.createElement('div');
-                    console.log(result.name);
                     div.textContent = result.name;
-                    div.onclick = () => {
+                    div.onclick = (e) => {
+                        e.preventDefault();
                         const latlng = [result.coordinates[1], result.coordinates[0]];
                         map.setView(latlng, 18);
-                        if (result.source === 'local') {
-                            console.log('local');
+
                             L.popup()
                                 .setLatLng(latlng)
                                 .setContent(`<h3>${result.name}</h3><p>Type: ${result.type}</p><p>Address: ${result.address}</p>`)
                                 .openOn(map);
-                                L.marker(latlng).addTo(map)
-                        } else {
-                            L.marker(latlng).addTo(map)
-                                .bindPopup(result.name)
-                                .openPopup();
-                        }
+                               let marker = L.marker(latlng).addTo(map);
+                               addMarker(marker);
+                               updateRoute(markers);
+                                
                         searchResults.style.display = 'none';
                     };
                     searchResults.appendChild(div);
@@ -440,18 +414,20 @@ document.querySelectorAll('.map-buttons').forEach(button => {
                 searchResults.style.display = 'none';
             }
         }
-
+        
+        // search for query on map
         function customSearch(query) {
             const results = [];
             let count = 0;
             let found = false;
             let data = null;
+            
+            // search among all the buildings
             json_Batisilo3_2.features.forEach(feature => {
             
                 const props = feature.properties;
                 
                 if (props.fid == query) {
-                    console.log("OK search");
                     results.push({
                         name: `Batiment ${props.fid}`,
                         type: props.type || 'N/A',
@@ -462,7 +438,8 @@ document.querySelectorAll('.map-buttons').forEach(button => {
                     found = true;
                 }
             });
-
+           
+            // if not found locally
             if (!found) {
                 // If not found in house features, try OpenStreetMap search
                 var url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`;
@@ -492,20 +469,14 @@ document.querySelectorAll('.map-buttons').forEach(button => {
                             });
                             displaySearchResults(dataResults);
                            
-                  
-                            console.log('openstreetmap');
-                           
-                            //map.getView().animate({center: position, zoom: 12});
-                          } else {
+                          }
+                           else {
                             return null;
                         }
                        }
                       ).catch(error => {
-                        alert('Error searching location: ' + error.message);
+                        console.log('Error searching location: ' + error.message);
                     });
-                    
-                    
-               
                
             }
             
@@ -513,49 +484,113 @@ document.querySelectorAll('.map-buttons').forEach(button => {
             return results;
         }
 
-       
-        searchInput.addEventListener('keypress',  function(e) {
-        
-            if(e.key == 'Enter'){
-                 const query = this.value;
-            if (query.length >= 1) {
-                
-                const localResults = customSearch(query);
-                console.log(localResults);
-                
-                const combinedResults = [
-                    ...localResults,
-                ];
-                console.log(combinedResults);
-                displaySearchResults(combinedResults);
-            } else {
-                searchResults.style.display = 'none';
-            }
-            }
-           
-        });
-
-      
+        // get user geolocation
         function getGeolocation() {
+            // get user location if browser support feature
             if ("geolocation" in navigator) {
                 navigator.geolocation.getCurrentPosition(function(position) {
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
                     map.setView([lat, lon], 15);
-                    L.marker([lat, lon]).addTo(map)
+
+                    // add the marker to the user's position
+                   let marker = L.marker([lat, lon]).addTo(map)
                         .bindPopup('Your location')
                         .openPopup();
+                        addMarker(marker);
+
+                    // update the routing path for the markers
+                        updateRoute(markers);
                 }, function(error) {
                     console.error("Error: " + error.message);
-                    alert("Unable to retrieve your location");
+                    console.log("Unable to retrieve your location");
                 });
 
-                if (markers.length === 1) {
-                        updateRoute();
-                    }
             } else {
-                alert("Geolocation is not supported by your browser");
+                console.log("Geolocation is not supported by your browser");
             }
-        } </script>
+        }
+
+        // set google hybrid layer as default
+
+        setLayer('hybrid');
+
+        // Add layer for buildings on the map
+        addGeoJSONLayer(json_Batisilo3_2, {
+            fillColor: '#ff7800',
+            weight: 1,
+            opacity: 1,
+            color: 'white',
+            fillOpacity: 0.7
+        }, function(feature, layer) {
+            layer.on('click', function(e) {
+                L.popup()
+                    .setLatLng(e.latlng)
+                    .setContent(`<h3>Building Information</h3>
+                                 <p>Type: ${feature.type || 'N/A'}</p>
+                                 <p>Name: Batiment ${feature.properties.fid || 'N/A'}</p>
+                                `)
+                    .openOn(map);
+            });
+        });
+        
+        // Add layer for roads on the map
+
+        addGeoJSONLayer(json_Voiries_3, {
+            color: 'yellow',
+            weight: 3,
+            opacity: 0.7
+        }, function(feature, layer) {
+            layer.bindTooltip(`Route de Fokoue ${routeCounter}`, {permanent: false, direction: 'center'});
+            routeCounter++;
+        });
+
+            // Prevent click propagation to map for all map buttons 
+    document.querySelectorAll('.map-buttons').forEach(button => {
+        button.addEventListener('click', function(e) {
+             e.stopPropagation();
+    });
+
+    [...button.children].forEach(button => {button.addEventListener('click', function(e) {
+        e.stopPropagation();
+         });})
+        });
+       
+        // Map click event
+        map.on('click', function(e) {
+            // get the marker for the event location
+                var marker = L.marker(e.latlng).addTo(map);
+
+                // add the marker to the map
+                addMarker(marker);
+
+                // draw the route for the markers
+                updateRoute(markers);
+        });
+        
+        searchInput.addEventListener('keypress',  function(e) {
+        
+        if(e.key == 'Enter'){
+             const query = this.value;
+        if (query.length >= 1) {
+            
+            const localResults = customSearch(query);
+            console.log(localResults);
+            
+            console.log(localResults);
+            displaySearchResults(localResults);
+        }
+         else {
+            searchResults.style.display = 'none';
+        }
+        }
+       
+    });
+
+  
+       
+       
+
+         </script>
 </body>
 </html>

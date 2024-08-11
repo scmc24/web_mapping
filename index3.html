@@ -174,15 +174,18 @@
         var routingMode = 'car';
 
         var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 28
         });
 
         var satelliteLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-            attribution: '© Google'
+            attribution: '© Google',
+            maxZoom: 28
         });
 
         var hybridLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-            attribution: '© Google'
+            attribution: '© Google',
+            maxZoom: 28
         });
 
         function setLayer(layerName) {

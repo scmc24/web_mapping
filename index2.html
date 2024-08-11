@@ -3,76 +3,173 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Leaflet Web Mapping App</title>
+    <title>Enhanced Leaflet Web Mapping App</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-geosearch/3.3.2/geosearch.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-geosearch/3.3.2/geosearch.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-routing-machine/3.2.12/leaflet-routing-machine.min.js"></script>
     <style>
-        body { margin: 0; padding: 0; }
-        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
-        .layer-control {
-            position: absolute;
-            bottom: 20px;
-            right: 10px;
-            z-index: 1000;
-            background: white;
-            border-radius: 4px;
-            box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+        body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
         }
-        .layer-control .logo {
+        #map { 
+            flex: 1;
+            width: 100%;
+            position: relative;
+        }
+        #control-panel {
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .mode-buttons button {
+            margin: 0 5px;
+            padding: 8px 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .mode-buttons button:hover {
+            background-color: #0056b3;
+        }
+        .search-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background-color: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .search-toggle {
             width: 40px;
             height: 40px;
-            background: #3388ff;
+            background: white;
             border-radius: 4px;
             display: flex;
             justify-content: center;
             align-items: center;
-            color: white;
-            font-weight: bold;
             cursor: pointer;
+            font-size: 20px;
         }
-        .layer-control .layer-buttons {
+        .search-bar {
             display: none;
             padding: 10px;
         }
-        .layer-control.expanded .layer-buttons {
+        .search-bar.active {
             display: block;
         }
-        .layer-control button {
+        .search-input {
+            width: 250px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .layer-control {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+        }
+        .layer-toggle {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .layer-buttons {
+            display: none;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 10px;
+            margin-top: 10px;
+        }
+        .layer-buttons.active {
+            display: block;
+        }
+        .layer-buttons button {
             display: block;
             margin: 5px 0;
             width: 100%;
+            padding: 8px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
         }
-        .leaflet-control-geosearch { width: 100%; }
-        .leaflet-control-geosearch form { background: white; }
-        .mode-buttons {
-            position: absolute;
-            top: 10px;
-            left: 50px;
-            z-index: 1000;
+        .layer-buttons button:hover {
+            background-color: #e9ecef;
+        }
+        .leaflet-popup-content-wrapper {
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            box-shadow: 0 3px 14px rgba(0,0,0,0.2);
+        }
+        .leaflet-popup-content {
+            margin: 13px 19px;
+            line-height: 1.4;
+        }
+        .leaflet-popup-tip {
+            background: rgba(255, 255, 255, 0.9);
         }
     </style>
 </head>
 <body>
-    <div id="map"></div>
-    <div class="layer-control">
-        <div class="logo" onclick="toggleLayerControl()">Map</div>
-        <div class="layer-buttons">
-            <button onclick="setLayer('osm')">OpenStreetMap</button>
-            <button onclick="setLayer('satellite')">Google Satellite</button>
-            <button onclick="setLayer('hybrid')">Google Hybrid</button>
+    <div id="map">
+        <div class="search-container">
+            <div class="search-toggle" onclick="toggleSearch()">🔍</div>
+            <div class="search-bar">
+                <input type="text" class="search-input" placeholder="Search...">
+            </div>
+        </div>
+        <div class="layer-control">
+            <div class="layer-toggle" onclick="toggleLayers()">Map</div>
+            <div class="layer-buttons">
+                <button onclick="setLayer('osm')">OpenStreetMap</button>
+                <button onclick="setLayer('satellite')">Google Satellite</button>
+                <button onclick="setLayer('hybrid')">Google Hybrid</button>
+            </div>
         </div>
     </div>
-    <div class="mode-buttons">
-        <button onclick="setRoutingMode('car')">Car</button>
-        <button onclick="setRoutingMode('bike')">Motorcycle</button>
-        <button onclick="setRoutingMode('foot')">Walk</button>
+    <div id="control-panel">
+        <div class="mode-buttons">
+            <button onclick="setRoutingMode('car')">Car</button>
+            <button onclick="setRoutingMode('bike')">Motorcycle</button>
+            <button onclick="setRoutingMode('foot')">Walk</button>
+        </div>
+        <div>Selected mode: <span id="selected-mode">Car</span></div>
     </div>
-
+    <script src="Voiries_3.js"></script>
+    <script src="ilo3_1.js"></script>
+    <script src="Batisilo3_2.js"></script>
     <script>
-        var map = L.map('map').setView([0, 0], 2);
+        // Assume these variables are defined and contain the GeoJSON data
+        // var json_Batisilo3_2;
+        // var json_Voiries_3;
+        // var json_ilo3_1;
+
+        var map = L.map('map');
         var currentLayer;
         var routingMode = 'car';
 
@@ -108,26 +205,20 @@
 
         setLayer('osm');
 
-        function toggleLayerControl() {
-            var control = document.querySelector('.layer-control');
-            control.classList.toggle('expanded');
+        function toggleSearch() {
+            document.querySelector('.search-bar').classList.toggle('active');
         }
 
-        // Add GeoSearch control
-        const search = new GeoSearch.GeoSearchControl({
-            provider: new GeoSearch.OpenStreetMapProvider(),
-            style: 'bar',
-            showMarker: true,
-            showPopup: false,
-            autoClose: true,
-        });
-        map.addControl(search);
+        function toggleLayers() {
+            document.querySelector('.layer-buttons').classList.toggle('active');
+        }
 
         var routingControl;
         var markers = [];
 
         function setRoutingMode(mode) {
             routingMode = mode;
+            document.getElementById('selected-mode').textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
             if (markers.length === 2) {
                 updateRoute();
             }
@@ -148,7 +239,7 @@
                 }),
                 routeWhileDragging: true,
                 lineOptions: {
-                    styles: [{color: '#3388ff', opacity: 0.6, weight: 4}]
+                    styles: [{color: '#007bff', opacity: 0.6, weight: 4}]
                 },
                 createMarker: function() { return null; },
                 addWaypoints: false,
@@ -156,12 +247,11 @@
                 showAlternatives: false
             }).addTo(map);
 
-            routingControl.on('routesfound', function(e) {
-                var routes = e.routes;
-                var summary = routes[0].summary;
-                var distance = (summary.totalDistance / 1000).toFixed(2);
-                var time = Math.round(summary.totalTime / 60);
-                alert(`Distance: ${distance} km\nEstimated time: ${time} minutes\nMode: ${routingMode}`);
+            routingControl.on('routesfound', function() {
+                var itineraryContainer = document.querySelector('.leaflet-routing-container');
+                if (itineraryContainer) {
+                    itineraryContainer.style.display = 'none';
+                }
             });
         }
 
@@ -174,13 +264,95 @@
                     updateRoute();
                 }
             } else {
-                // Reset markers and routing
                 markers.forEach(marker => map.removeLayer(marker));
                 markers = [];
                 if (routingControl) {
                     map.removeControl(routingControl);
                     routingControl = null;
                 }
+            }
+        });
+
+        function addGeoJSONLayer(data, style, onEachFeature) {
+            L.geoJSON(data, {
+                style: style,
+                onEachFeature: onEachFeature
+            }).addTo(map);
+        }
+
+        addGeoJSONLayer(json_Batisilo3_2, {
+            fillColor: '#ff7800',
+            weight: 1,
+            opacity: 1,
+            color: 'white',
+            fillOpacity: 0.7
+        }, function(feature, layer) {
+            layer.on('click', function(e) {
+                L.popup()
+                    .setLatLng(e.latlng)
+                    .setContent(`<h3>Building Information</h3>
+                                 <p>Type: ${feature.properties.type || 'N/A'}</p>
+                                 <p>Name: ${feature.properties.name || 'N/A'}</p>
+                                 <p>Address: ${feature.properties.address || 'N/A'}</p>`)
+                    .openOn(map);
+            });
+        });
+
+        let routeCounter = 1;
+        addGeoJSONLayer(json_Voiries_3, {
+            color: '#007bff',
+            weight: 3,
+            opacity: 0.7
+        }, function(feature, layer) {
+            layer.bindTooltip(`Route de Fokoue ${routeCounter}`, {permanent: true, direction: 'center'});
+            routeCounter++;
+        });
+
+        const ilo3Layer = L.geoJSON(json_ilo3_1, {
+            style: {
+                fillColor: '#1c9099',
+                weight: 2,
+                opacity: 1,
+                color: 'white',
+                fillOpacity: 0.6
+            }
+        }).addTo(map);
+        map.fitBounds(ilo3Layer.getBounds());
+
+        function customSearch(query) {
+            const results = [];
+            map.eachLayer(function(layer) {
+                if (layer.feature && layer.feature.properties) {
+                    const props = layer.feature.properties;
+                    if (props.name && props.name.toLowerCase().includes(query.toLowerCase())) {
+                        results.push({
+                            bounds: layer.getBounds(),
+                            name: props.name
+                        });
+                    }
+                }
+            });
+            return results;
+        }
+
+        const customProvider = {
+            search: function(query) {
+                return new Promise((resolve) => {
+                    const results = customSearch(query);
+                    resolve(results);
+                });
+            },
+        };
+
+        const searchInput = document.querySelector('.search-input');
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const query = this.value;
+                customProvider.search(query).then(results => {
+                    if (results.length > 0) {
+                        map.fitBounds(results[0].bounds);
+                    }
+                });
             }
         });
     </script>
