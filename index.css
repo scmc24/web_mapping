@@ -287,3 +287,25 @@ body {
     font-size: small !important;
     border-radius: 0rem !important;
 }
+
+.user-marker-icon {
+    background-color: #3388ff;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    height: 100%;
+    width: 100%;
+    box-shadow: 0 0 0 2px #3388ff;
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(51, 136, 255, 0.7);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(51, 136, 255, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(51, 136, 255, 0);
+    }
+  }

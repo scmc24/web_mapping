@@ -341,7 +341,7 @@
               });
             }
           } catch (error) {
-            console.log("Error searching location: " + error.message);
+            console.error("Error searching location: " + error.message);
           }
         }
 
@@ -378,36 +378,13 @@
         document.getElementById("start-tracking").innerHTML =
         `<i class="fas fa-stop fa-2x"></i>`;
       
-            document.getElementById("start-tracking").classList.toggle("stop-true");
+        document.getElementById("start-tracking").classList.toggle("stop-true");
         
         
             
        
         watchId = navigator.geolocation.watchPosition(
-          function (position) {
-            console.log(position);
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
-
-            if (!userMarker) {
-                userMarker = L.marker([lat, lon]).addTo(map);
-                map.setView([lat, lon], 15);
-                markers.push(userMarker);
-            } else {
-                userMarker.setLatLng([lat, lon]);
-            }
-
-            map.setView([lat, lon], 15);
-            // Update the route if we have a destination
-            if (markers.length === 2) {
-            markers[0] = userMarker;
-            
-        }
-        
-            console.log(`markers : ${markers.length}`);
-            //updateRoute(markers);
-          
-          },
+          updateUserPosition,
           function (error) {
             console.error("Error: " + error.message);
           },
@@ -419,6 +396,39 @@
         );
 
      
+      }
+
+      function updateUserPosition(position){
+
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+
+        if (!userMarker) {
+            userMarker = L.marker([lat, lon], {
+                icon: L.divIcon({
+                    className: 'user-marker',
+                    html: '<div class="user-marker-icon"></div>',
+                    iconSize: [20, 20]
+                })
+            }).addTo(map);
+            map.setView([lat, lon], 15);
+           if(markers.length < 2) markers.push(userMarker);
+           else markers[0] = userMarker;  updateRoute(markers);
+        }
+        else{
+            userMarker.setLatLng([lat, lon]);
+        }
+
+        // update the map view to follow the user
+        map.panTo([lat, lon]);
+
+        // Update the route if we have a destination 
+        if(markers.length === 2){
+            markers[0] = userMarker;
+            updateRoute(markers);
+        }
+
+        console.log(`User position updated: ${lat}, ${lon}`);
       }
 
       function stopTracking() {
@@ -434,7 +444,8 @@
         if (userMarker) {
             map.removeLayer(userMarker);
             userMarker = null;
-            markers = [markers[1]];
+            //markers = [markers[1]];
+            markers = markers.filter(marker => marker!== userMarker);
         }
       }
 
