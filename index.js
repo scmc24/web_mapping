@@ -23,21 +23,21 @@
       var osmLayer = L.tileLayer(
         "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
         {
-          attribution: "© OpenStreetMap contributors",
+         // attribution: "© OpenStreetMap contributors",
         }
       );
 
       var satelliteLayer = L.tileLayer(
         "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
         {
-          attribution: "© Google",
+         // attribution: "© Google",
         }
       );
 
       var hybridLayer = L.tileLayer(
         "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
         {
-          attribution: "© Google",
+          //attribution: "© Google",
         }
       );
       
@@ -154,16 +154,22 @@
       // choose routing mode by car , motorcycle or walk
       function setRoutingMode(mode, markers) {
         routingMode = mode;
+        let icon = {
+            car: 'car',
+            bike: 'motorcycle',
+            foot: 'walking'
+        }
         document.getElementById("selected-mode").textContent =
           mode.charAt(0).toUpperCase() + mode.slice(1);
-
+        
+          document.getElementById("selected-mode").innerHTML =  `<i class="fas fa-${icon[mode]}"></i> ${mode}`
         updateRoute(markers);
       }
 
       // Update the routing path
       // Modify the updateRoute function to always use the user's current position as the start point
       function updateRoute(markers) {
-        if (markers.length === 2) {
+        if (markers && markers.length === 2) {
           // We have a destination and user's current position
           if (routingControl) {
             map.removeControl(routingControl);
@@ -197,8 +203,10 @@
           // Voice navigation with distance
           routingControl.on("routesfound", function (e) {
             let routes = e.routes;
-            //routes.forEach(route => console.log(route.instructions,route.distance));
-            let instructions = routes[0].instructions;
+            console.log(routes);
+            let bestRoute = routes.sort((r1,r2) => r1.summary.totalDistance - r2.summary.totalDistance)
+           
+            let instructions = bestRoute[0].instructions;
 
             if (instructions.length > 0) {
               console.log(instructions[0]);
@@ -343,26 +351,15 @@
       // get user geolocation
       function getGeolocation() {
         if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(function(position) {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                map.setView([lat, lon], 15);
-
-                let marker = L.marker([lat, lon]).addTo(map)
-                    .bindPopup('Your location')
-                    .openPopup();
-                
-                addMarker(marker);
-               //updateRoute(marker);
-
-            }, function(error) {
-                console.error("Error: " + error.message);
-                alert("Unable to retrieve your location");
-            });
-
+          
+            if (isTracking) {
+                stopTracking();
+            } else {
+                startTracking();
+            }
            
         } else {
-            alert("Geolocation is not supported by your browser");
+            console.log("Geolocation is not supported by your browser");
         }
     }
       // set google hybrid layer as default
@@ -378,7 +375,8 @@
       function startTracking() {
         isTracking = true;
         removeMarkers();
-        document.getElementById("start-tracking").textContent = "Stop Tracking";
+        document.getElementById("start-tracking").innerHTML =
+        `<i class="fas fa-stop fa-2x"></i>`;
       
             document.getElementById("start-tracking").classList.toggle("stop-true");
         
@@ -425,8 +423,8 @@
 
       function stopTracking() {
         isTracking = false;
-        document.getElementById("start-tracking").textContent =
-          "Start Tracking";
+        document.getElementById("start-tracking").innerHTML =
+        `<i class="fas fa-location-arrow fa-2x"></i>`
         
           document.getElementById("start-tracking").classList.toggle("stop-true");
         
@@ -451,7 +449,7 @@
                 displaySearchResults(results);
                 console.log(`markers : ${markers.length}`);
               } else {
-                alert("Destination not found. Please try again.");
+                console.log("Destination not found. Please try again.");
               }
         })
         .catch((error) => {
